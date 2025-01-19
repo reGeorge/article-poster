@@ -6,6 +6,11 @@ import json
 from urllib.parse import parse_qs
 from libs.wechat import WeChatMessage
 from libs.github_api import GitHubAPI
+import threading
+import logging
+import time
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -58,29 +63,39 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         """处理POST请求（接收消息）"""
+        start_time = time.time()
         try:
-            # 读取请求体
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            
-            # 处理微信消息
-            message = WeChatMessage(post_data)
-            if message.msg_type == 'text':
-                github = GitHubAPI()
-                if github.create_post(message.format_post()):
-                    print("Post created successfully")
-                else:
-                    print("Failed to create post")
-            
-            # 返回成功响应
+            # 1. 立即返回成功响应
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write('success'.encode())
+
+            # 记录响应时间
+            response_time = time.time() - start_time
+            logger.info(f"Response time: {response_time:.3f} seconds")
+            
+            
+            # 2. 异步处理消息
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            def process_message():
+                try:
+                    message = WeChatMessage(post_data)
+                    if message.msg_type == 'text':
+                        github = GitHubAPI()
+                        github.create_post(message.format_post())
+                        logger.info("Message processed successfully")
+                except Exception as e:
+                    logger.error(f"Error processing message: {str(e)}")
+            
+            # 在新线程中处理消息
+            threading.Thread(target=process_message).start()
             
         except Exception as e:
-            print(f"Error in POST: {str(e)}")
-            # 即使发生错误也返回成功，避免微信服务器重试
+            logger.error(f"Error in POST handler: {str(e)}")
+            # 确保即使出错也返回成功
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
