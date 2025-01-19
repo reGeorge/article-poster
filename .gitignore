@@ -173,3 +173,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 >>>>>>> 5700720bccf72436b1feecd8a56b5e4038a938de
+.vercel
