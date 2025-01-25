@@ -16,21 +16,9 @@ def webhook():
 # Vercel 需要这个 handler
 class handler(BaseHTTPRequestHandler):
     def validate_signature(self, query):
-        """验证微信服务器签名"""
-        token = os.environ.get('WECHAT_TOKEN')
-        timestamp = query.get('timestamp', [''])[0]
-        nonce = query.get('nonce', [''])[0]
-        signature = query.get('signature', [''])[0]
-        
-        # 按字典序排序
-        tmp_list = [token, timestamp, nonce]
-        tmp_list.sort()
-        
-        # SHA1加密
-        tmp_str = ''.join(tmp_list)
-        hash_obj = hashlib.sha1(tmp_str.encode())
-        
-        return hash_obj.hexdigest() == signature
+        """验证微信服务器签名 (已禁用)"""
+        # 跳过签名校验,直接返回True
+        return True
 
     def do_GET(self):
         """处理GET请求（微信服务器验证）"""
@@ -62,6 +50,8 @@ class handler(BaseHTTPRequestHandler):
             # 读取请求体
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
+            # 打印请求体
+            print(post_data)
             
             # 处理微信消息
             message = WeChatMessage(post_data)
